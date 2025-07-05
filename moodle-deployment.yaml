@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: moodle-db-secret
+type: Opaque
+data:
+  MYSQL_PWD: cXdlcjEyMzQ1Njc=
+  MOODLE_DATABASE_PASSWORD: cXdlcjEyMzQ1Njc=
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moodle
+  labels:
+    app: moodle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moodle
+  template:
+    metadata:
+      labels:
+        app: moodle
+    spec:
+      initContainers:
+        - name: init-db
+          image: mysql:5.7
+          env:
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-db-secret
+                  key: MYSQL_PWD
+          command:
+            - sh
+            - -c
+            - |
+              mysql -h ${RDS_ENDPOINT} -u admin -e "DROP DATABASE IF EXISTS moodledb; CREATE DATABASE moodledb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+      containers:
+        - name: moodle
+          image: bitnami/moodle:latest
+          env:
+            - name: BITNAMI_DEBUG
+              value: "yes"
+            - name: APACHE_ENABLE_TLS
+              value: "no"
+            - name: MOODLE_DATABASE_HOST
+              value: "${RDS_ENDPOINT}"
+            - name: MOODLE_DATABASE_PORT
+              value: "3306"
+            - name: MOODLE_DATABASE_NAME
+              value: "moodledb"
+            - name: MOODLE_DATABASE_USER
+              value: "admin"
+            - name: MOODLE_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: moodle-db-secret
+                  key: MOODLE_DATABASE_PASSWORD
+            - name: MYSQL_CLIENT_CREATE_DATABASE
+              value: "false"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: moodle-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: moodle
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50

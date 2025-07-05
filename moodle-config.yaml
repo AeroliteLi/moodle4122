@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moodle-config
+data:
+  BITNAMI_DEBUG: "yes"
+  APACHE_ENABLE_TLS: "no"
+  MOODLE_DATABASE_HOST: "${RDS_ENDPOINT}"
+  MOODLE_DATABASE_PORT: "3306"
+  MOODLE_DATABASE_NAME: "moodledb"
+  MOODLE_DATABASE_USER: "admin"
+  MOODLE_DATABASE_PASSWORD: "qwer1234567"
+  MYSQL_CLIENT_CREATE_DATABASE: "false"
