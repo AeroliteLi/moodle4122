@@ -58,7 +58,7 @@ sleep 3
 envsubst < moodle-svc.yaml | kubectl apply -f -
 envsubst < moodle-config.yaml | kubectl apply -f -
 
-sleep 100
+sleep 5
 envsubst < moodle-deployment.yaml | kubectl apply -f -
 
 echo "✅ Moodle 一鍵部署完成！"
